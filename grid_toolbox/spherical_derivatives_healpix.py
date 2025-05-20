@@ -194,12 +194,19 @@ def compute_hor_wind_conv_on_hp(
         The horizontal wind convergence.
     """
     nside, ring_index = _extract_hp_params(ua)
-    return _compute_hor_wind_conv_on_hp(
-        ua.isel(cell=ring_index).values,
-        va.isel(cell=ring_index).values,
-        ua.lat.isel(cell=ring_index).values,
-        nside
-    )
+    return xr.apply_ufunc(
+        _compute_hor_wind_conv_on_hp,
+        ua.isel(cell=ring_index),
+        va.isel(cell=ring_index),
+        ua.isel(cell=ring_index).lat,
+        nside,
+        input_core_dims=[['cell'],['cell'],['cell'],[]],
+        dask = "parallelized",
+        vectorize = True,
+        output_core_dims= [['cell']],
+        dask_gufunc_kwargs = {"output_sizes": {"cell": len(ua.cell)}},
+        output_dtypes = ["f8"],
+        )
 
 
 def _compute_hor_wind_conv_on_hp(
