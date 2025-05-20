@@ -67,7 +67,7 @@ def _ring2nest_index(var: xr.DataArray, nside: int) -> np.ndarray:
     numpy.ndarray
         An array of nested indices corresponding to the ring indices.
     """
-    return np.array([hp.nest2ring(nside, i) for i in np.arange(len(var))])
+    return np.array([hp.nest2ring(nside, i) for i in var.cell.values])
 
 
 # ------------------------------------------------------------------------------
