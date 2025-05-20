@@ -11,7 +11,6 @@ dependencies = [
     "easygems",
     "healpy",
     "numpy",
-    "pathlib",
     "typing"
     "xarray",
 ]
