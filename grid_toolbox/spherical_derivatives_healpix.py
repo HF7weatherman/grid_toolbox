@@ -194,7 +194,7 @@ def compute_hor_wind_conv_on_hp(
         The horizontal wind convergence.
     """
     nside, ring_index = _extract_hp_params(ua)
-    return xr.apply_ufunc(
+    convergence = xr.apply_ufunc(
         _compute_hor_wind_conv_on_hp,
         ua.isel(cell=ring_index),
         va.isel(cell=ring_index),
@@ -207,6 +207,9 @@ def compute_hor_wind_conv_on_hp(
         dask_gufunc_kwargs = {"output_sizes": {"cell": len(ua.cell)}},
         output_dtypes = ["f8"],
         )
+    #return convergence
+    nest_index = _ring2nest_index(convergence, nside)
+    return convergence.isel(cell=nest_index)
 
 
 def _compute_hor_wind_conv_on_hp(
@@ -238,9 +241,7 @@ def _compute_hor_wind_conv_on_hp(
     dua_dphi, _ = _compute_hder_hp(ua, nside)
     _, dva_dtheta  = _compute_hder_hp(va, nside)
     va_tanlat = va * np.tan(np.deg2rad(lat))
-    convergence = -(dua_dphi - dva_dtheta - va_tanlat)/EARTH_RADIUS
-    nest_index = _ring2nest_index(convergence, nside)
-    return convergence[nest_index]
+    return -(dua_dphi - dva_dtheta - va_tanlat)/EARTH_RADIUS
 
 
 def _compute_hder_hp(
