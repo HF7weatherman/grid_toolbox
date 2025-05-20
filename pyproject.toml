@@ -12,6 +12,7 @@ dependencies = [
     "healpy",
     "numpy",
     "pathlib",
+    "typing"
     "xarray",
 ]
 description = "Toolbox for various grid operations (for ICON data) in Python."

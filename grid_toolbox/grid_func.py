@@ -3,13 +3,14 @@ import xarray as xr
 import numpy as np
 import healpy as hp
 import easygems.healpix as egh
+from typing import Tuple
 
 from constants import EARTH_RADIUS
 
 # ------------------------------------------------------------------------------
 # Basic HEALPix functionality
 # ---------------------------
-def _extract_hp_params(var: xr.DataArray) -> tuple[int, np.ndarray]:
+def _extract_hp_params(var: xr.DataArray) -> Tuple[int, np.ndarray]:
     """
     Extracts HEALPix parameters from the given DataArray.
 
@@ -20,7 +21,7 @@ def _extract_hp_params(var: xr.DataArray) -> tuple[int, np.ndarray]:
 
     Returns
     -------
-    tuple[int, np.array]
+    Tuple[int, np.array]
         A tuple containing the nside parameter and the ring index array.
     """
     nside = egh.get_nside(var)
@@ -77,8 +78,8 @@ def _ring2nest_index(var: xr.DataArray, nside: int) -> np.ndarray:
 # -----------------------------------------------------------------------
 def remap_nn_hp2latlon(
         var_hp: xr.DataArray,
-        lats: tuple[int, int, int],
-        lons: tuple[int, int, int],
+        lats: Tuple[int, int, int],
+        lons: Tuple[int, int, int],
         supersampling: dict={"lon": 1, "lat": 1},
         ) -> xr.DataArray:
     """
@@ -89,10 +90,10 @@ def remap_nn_hp2latlon(
     ----------
     var_hp : xr.DataArray
         The input data array on a Healpix grid.
-    lats : tuple[int, int, int]
+    lats : Tuple[int, int, int]
         A tuple specifying the latitude range and resolution as
         (start, end, num_points).
-    lons : tuple[int, int, int]
+    lons : Tuple[int, int, int]
         A tuple specifying the longitude range and resolution as
         (start, end, num_points).
     supersampling : dict, optional
@@ -150,7 +151,7 @@ def _get_nn_lon_lat_index(
 # -------------------------------
 def compute_gradient_on_hp(
         var: xr.DataArray,
-        ) -> tuple[np.ndarray, np.ndarray]:
+        ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Calculates the cartesian gradient of a 2D scalar field on the HEALPix grid.
 
@@ -161,7 +162,7 @@ def compute_gradient_on_hp(
 
     Returns:
     --------
-    tuple[np.array, np.array]
+    Tuple[np.array, np.array]
         A tuple containing:
         - dvar_dx: Gradient of the scalar field in the x-direction (longitude).
         - dvar_dy: Gradient of the scalar field in the y-direction (latitude).
@@ -215,7 +216,7 @@ def compute_laplacian_on_hp(var: xr.DataArray) -> np.ndarray:
 
 def compute_gradient_and_laplacian_on_hp(
         var: xr.DataArray
-        ) -> tuple[tuple[np.ndarray, np.ndarray], np.ndarray]:
+        ) -> Tuple[Tuple[np.ndarray, np.ndarray], np.ndarray]:
     """
     Computes both the cartesian gradient and the cartesian Laplacian of a
     variable on a HEALPix grid.
@@ -228,7 +229,7 @@ def compute_gradient_and_laplacian_on_hp(
 
     Returns
     -------
-    tuple
+    Tuple
         A tuple containing the cartesian gradient and cartesian Laplacian of
         the input variable, both reordered to the nested indexing scheme.
     """
@@ -247,7 +248,7 @@ def _compute_gradient_on_hp(
         dvar_dphi: xr.DataArray,
         dvar_dtheta: xr.DataArray,
         nside: int,
-        ) -> tuple[np.ndarray, np.ndarray]:
+        ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Computes the cartesian gradient components from spherical gradient
     components on a HEALPix grid.
@@ -265,14 +266,14 @@ def _compute_gradient_on_hp(
 
     Returns
     -------
-    tuple[np.array, np.array]
+    Tuple[np.array, np.array]
         A tuple containing the cartesian gradients in the x and y directions,
         respectively,  mapped to the nested indexing scheme of the HEALPix grid.
     """
     dvar_dy = -dvar_dtheta/EARTH_RADIUS
     dvar_dx = dvar_dphi/EARTH_RADIUS
     nest_index = _ring2nest_index(dvar_dx, nside)
-    return [dvar_dx[nest_index], dvar_dy[nest_index]]
+    return (dvar_dx[nest_index], dvar_dy[nest_index])
 
 
 def _compute_laplacian_on_hp(
@@ -381,7 +382,7 @@ def _compute_hor_wind_conv_on_hp(
 def _compute_hder_hp(
         var: np.ndarray,
         nside: int
-        ) -> tuple[np.ndarray, np.ndarray]:
+        ) -> Tuple[np.ndarray, np.ndarray]:
     """
     Computes the horizontal derivatives of a variable (1 vertical level, 1 time)
     using spherical harmonics.
@@ -397,7 +398,7 @@ def _compute_hder_hp(
 
     Returns
     -------
-    tuple of numpy.ndarray
+    Tuple of numpy.ndarray
         A tuple containing two arrays:
         - dvar_dphi (numpy.ndarray): The derivative of the variable with respect
             to longitude (phi).
@@ -418,14 +419,14 @@ def _compute_hder_hp(
 # Derivatives on regular or rectilinear lat-lon grids
 # ---------------------------------------------------
 def absolute_gradient(
-        gradient: tuple[xr.DataArray, xr.DataArray]
+        gradient: Tuple[xr.DataArray, xr.DataArray]
         ) -> xr.DataArray:
     """
     Computes the absolute gradient from the given gradient components.
 
     Parameters
     ----------
-    gradient : tuple[xr.DataArray, xr.DataArray]
+    gradient : Tuple[xr.DataArray, xr.DataArray]
         A tuple containing the gradient components (dvar_dx, dvar_dy).
 
     Returns
@@ -438,7 +439,7 @@ def absolute_gradient(
 
 def compute_gradient_on_latlon(
         var: xr.DataArray
-        ) -> tuple[xr.DataArray, xr.DataArray]:
+        ) -> Tuple[xr.DataArray, xr.DataArray]:
     """
     Computes the cartesian gradient of a variable on regular or rectilinear
     lat-lon grids.
@@ -450,7 +451,7 @@ def compute_gradient_on_latlon(
 
     Returns
     -------
-    tuple[xr.DataArray, xr.DataArray]
+    Tuple[xr.DataArray, xr.DataArray]
         A tuple containing:
         - dvar_dx: Cartesian gradient of the variable in the longitude direction.
         - dvar_dy: Cartesian gradient of the variable in the latitude direction.
@@ -482,7 +483,7 @@ def compute_laplacian_on_latlon(var: xr.DataArray) -> xr.DataArray:
 
 def compute_gradient_and_laplacian_on_latlon(
         var: xr.DataArray
-        ) -> tuple[tuple[xr.DataArray, xr.DataArray], xr.DataArray]:
+        ) -> Tuple[Tuple[xr.DataArray, xr.DataArray], xr.DataArray]:
     """
     Computes both the cartesian gradient and the cartesian Laplacian of a
     variable on regular or rectilinear lat-lon grids.
@@ -494,7 +495,7 @@ def compute_gradient_and_laplacian_on_latlon(
 
     Returns
     -------
-    tuple[tuple[xr.DataArray, xr.DataArray], xr.DataArray]
+    Tuple[Tuple[xr.DataArray, xr.DataArray], xr.DataArray]
         A tuple containing:
         - gradient: A tuple with the cartesian gradient components
                     (dvar_dx, dvar_dy).
@@ -510,7 +511,7 @@ def compute_gradient_and_laplacian_on_latlon(
 def _compute_gradient_on_latlon(
         dvar_dphi: xr.DataArray,
         dvar_dlambda: xr.DataArray
-        ) -> tuple[xr.DataArray, xr.DataArray]:
+        ) -> Tuple[xr.DataArray, xr.DataArray]:
     """
     Computes the cartesian gradient components from spherical gradient
     components.
@@ -524,15 +525,15 @@ def _compute_gradient_on_latlon(
 
     Returns
     -------
-    tuple[xr.DataArray, xr.DataArray]
+    Tuple[xr.DataArray, xr.DataArray]
         A tuple containing the cartesian gradient components (dvar_dx, dvar_dy).
     """
-    return [dvar_dphi/EARTH_RADIUS, dvar_dlambda/EARTH_RADIUS]
+    return (dvar_dphi/EARTH_RADIUS, dvar_dlambda/EARTH_RADIUS)
 
 
 def _compute_hder_on_latlon(
         var: xr.DataArray
-        ) -> tuple[xr.DataArray, xr.DataArray]:
+        ) -> Tuple[xr.DataArray, xr.DataArray]:
     """
     Computes the spherical horizontal derivatives on regular or rectilinear
     lat-lon grids.
@@ -544,7 +545,7 @@ def _compute_hder_on_latlon(
 
     Returns
     -------
-    tuple[xr.DataArray, xr.DataArray]
+    Tuple[xr.DataArray, xr.DataArray]
         A tuple containing the spherical horizontal derivatives
         (dvar_dphi, dvar_dtheta).
     """
@@ -585,7 +586,7 @@ def _compute_laplacian_on_latlon(
 def compute_hor_wind_conv_on_latlon(
         ua: xr.DataArray,
         va: xr.DataArray,
-        ) -> tuple[xr.DataArray, xr.DataArray]:
+        ) -> Tuple[xr.DataArray, xr.DataArray]:
     """
     Computes the cartesian gradient of a variable on regular or rectilinear
     lat-lon grids.
@@ -597,7 +598,7 @@ def compute_hor_wind_conv_on_latlon(
 
     Returns
     -------
-    tuple[xr.DataArray, xr.DataArray]
+    Tuple[xr.DataArray, xr.DataArray]
         A tuple containing:
         - dvar_dx: Cartesian gradient of the variable in the longitude direction.
         - dvar_dy: Cartesian gradient of the variable in the latitude direction.
