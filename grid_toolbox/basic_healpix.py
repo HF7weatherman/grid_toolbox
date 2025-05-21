@@ -80,6 +80,8 @@ def coarsen_hp_grid_xr(
     Thin xarray wrapper for `aggregate_grid'. Developed by Lukas Brunner, UHH
     """
     
+    npix_out = hp.nside2npix(2**z_out)
+    
     if gridn is None:  # try to guess grid name from frequent options
         gridn = _guess_gridn(da)
             
@@ -87,10 +89,13 @@ def coarsen_hp_grid_xr(
         _coarsen_hp_grid,
         da, z_out,
         input_core_dims=[[gridn], []],
-        output_core_dims=[['tmp']],
+        dask = "parallelized",
         vectorize=True,
+        output_core_dims=[['cell']],
         kwargs={'method': method},
-    ).rename({'tmp': gridn})
+        dask_gufunc_kwargs = {"output_sizes": {"cell": npix_out}},
+        output_dtypes=["f8"],
+    )
 
 
 def _coarsen_hp_grid(
@@ -149,6 +154,8 @@ def _coarsen_hp_grid(
     """
     npix_in = arr.size
     npix_out = hp.nside2npix(2**z_out)
+    print(arr)
+    print(npix_in, npix_out)
     
     if npix_out >= npix_in:
         error = 'Output zoom level needs to be smaller than input zoom level'
