@@ -195,13 +195,15 @@ def _coarsen_hp_grid(
         12 |  4096 |       1.6 | 201,326,592
     """
     npix_in = arr.size
-    npix_out = hp.nside2npix(2**z_out)
-    print(arr)
-    print(npix_in, npix_out)
-    
-    if npix_out >= npix_in:
+    npix_out = hp.nside2npix(2**z_out)    
+    if npix_out > npix_in:
         error = 'Output zoom level needs to be smaller than input zoom level'
         raise ValueError(error)
+    elif npix_out == npix_in:
+        note = 'Output zoom level is the same as input zoom level. Thus, ' + \
+            'there is no need for coarsening and the input data is returned.'
+        print(note)
+        return arr
 
     ratio = npix_in / npix_out
     if not ratio.is_integer():  # this should never happen
