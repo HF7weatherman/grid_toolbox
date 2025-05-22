@@ -70,6 +70,29 @@ def _ring2nest_index(var: xr.DataArray, nside: int) -> np.ndarray:
     return np.array([hp.nest2ring(nside, i) for i in var.cell.values])
 
 
+def rechunk_along_griddim(data: xr.Dataset) -> xr.Dataset:
+    """
+    Rechunks an xarray Dataset along its grid dimension.
+
+    This function determines the grid dimension name using the internal
+    `_guess_gridn` function and rechunks the dataset so that all data
+    along this dimension is contained in a single chunk.
+
+    Parameters
+    ----------
+    data : xr.Dataset
+        The input xarray Dataset to rechunk.
+
+    Returns
+    -------
+    xr.Dataset
+        The rechunked xarray Dataset, with the grid dimension in a single chunk.
+    """
+    from grid_toolbox.basic_healpix import _guess_gridn
+    gridn = _guess_gridn(data)
+    return data.chunk({gridn: -1})
+
+
 def coarsen_hp_grid_xr(
         da: xr.DataArray,
         z_out: int,
@@ -79,9 +102,7 @@ def coarsen_hp_grid_xr(
     """
     Thin xarray wrapper for `aggregate_grid'. Developed by Lukas Brunner, UHH
     """
-    
     npix_out = hp.nside2npix(2**z_out)
-    
     if gridn is None:  # try to guess grid name from frequent options
         gridn = _guess_gridn(da)
             
