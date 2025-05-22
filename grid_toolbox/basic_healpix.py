@@ -133,11 +133,11 @@ def coarsen_hp_grid_xr(
         input_core_dims=[[gridn], []],
         dask = "parallelized",
         vectorize=True,
-        output_core_dims=[['cell']],
+        output_core_dims=[['tmp']],
         kwargs={'method': method},
-        dask_gufunc_kwargs = {"output_sizes": {"cell": npix_out}},
+        dask_gufunc_kwargs = {"output_sizes": {"tmp": npix_out}},
         output_dtypes=["f8"],
-    )
+    ).rename({'tmp': gridn})
 
 
 def _coarsen_hp_grid(
