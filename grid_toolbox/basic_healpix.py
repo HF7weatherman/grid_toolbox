@@ -70,6 +70,28 @@ def _ring2nest_index(var: xr.DataArray, nside: int) -> np.ndarray:
     return np.array([hp.nest2ring(nside, i) for i in var.cell.values])
 
 
+def guess_gridn(da: xr.DataArray) -> str:
+    """
+    Try to guess the name of the spatial coordinate name from a list of frequent
+    options. Developed by Lukas Brunner, UHH."""
+    dims = list(da.dims)
+    gridn = []
+    if 'values' in dims:
+        gridn.append('values')
+    if 'value' in dims:
+        gridn.append('value')
+    if 'cell' in dims:
+        gridn.append('cell')
+    if 'x' in dims:
+        gridn.append('x')
+    if len(gridn) == 1:
+        return gridn[0]
+
+    raise ValueError(
+        'gridn needs to be set manually to one of: {}'.format(', '.join(dims))
+        )
+
+
 def rechunk_along_griddim(data: xr.Dataset) -> xr.Dataset:
     """
     Rechunks an xarray Dataset along its grid dimension.
@@ -88,8 +110,7 @@ def rechunk_along_griddim(data: xr.Dataset) -> xr.Dataset:
     xr.Dataset
         The rechunked xarray Dataset, with the grid dimension in a single chunk.
     """
-    from grid_toolbox.basic_healpix import _guess_gridn
-    gridn = _guess_gridn(data)
+    gridn = guess_gridn(data)
     return data.chunk({gridn: -1})
 
 
@@ -104,7 +125,7 @@ def coarsen_hp_grid_xr(
     """
     npix_out = hp.nside2npix(2**z_out)
     if gridn is None:  # try to guess grid name from frequent options
-        gridn = _guess_gridn(da)
+        gridn = guess_gridn(da)
             
     return xr.apply_ufunc(
         _coarsen_hp_grid,
@@ -198,28 +219,6 @@ def _coarsen_hp_grid(
         return arr.reshape(npix_out, ratio).max(axis=-1)
         
     raise ValueError(f'{method=}')
-
-
-def _guess_gridn(da: xr.DataArray) -> str:
-    """
-    Try to guess the name of the spatial coordinate name from a list of frequent
-    options. Developed by Lukas Brunner, UHH."""
-    dims = list(da.dims)
-    gridn = []
-    if 'values' in dims:
-        gridn.append('values')
-    if 'value' in dims:
-        gridn.append('value')
-    if 'cell' in dims:
-        gridn.append('cell')
-    if 'x' in dims:
-        gridn.append('x')
-    if len(gridn) == 1:
-        return gridn[0]
-
-    raise ValueError(
-        'gridn needs to be set manually to one of: {}'.format(', '.join(dims))
-        )
 
 
 # ------------------------------------------------------------------------------
