@@ -200,9 +200,6 @@ def _coarsen_hp_grid(
         error = 'Output zoom level needs to be smaller than input zoom level'
         raise ValueError(error)
     elif npix_out == npix_in:
-        note = 'Output zoom level is the same as input zoom level. Thus, ' + \
-            'there is no need for coarsening and the input data is returned.'
-        print(note)
         return arr
 
     ratio = npix_in / npix_out
