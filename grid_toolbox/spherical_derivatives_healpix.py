@@ -207,8 +207,8 @@ def compute_hor_wind_conv_on_hp(
         dask_gufunc_kwargs = {"output_sizes": {"cell": len(ua.cell)}},
         output_dtypes = ["f8"],
         )
-    #return convergence
-    nest_index = _ring2nest_index(convergence, nside)
+    
+    nest_index = _ring2nest_index(ua, nside)
     return convergence.isel(cell=nest_index)
 
 
