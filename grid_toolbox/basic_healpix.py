@@ -220,6 +220,38 @@ def _coarsen_hp_grid(
     raise ValueError(f'{method=}')
 
 
+def refine_hp_grid_xr(
+        da: xr.DataArray | xr.Dataset,
+        target_zoom: int,
+        gridn=None,
+        ) -> xr.DataArray | xr.Dataset:
+    nside_out = 2**target_zoom
+    npix_out = hp.nside2npix(nside_out)
+
+    if gridn is None:  # try to guess grid name from frequent options
+        gridn = guess_gridn(da)
+    
+    return xr.apply_ufunc(
+        _refine_hp_grid,
+        da, nside_out,
+        input_core_dims=[[gridn], []],
+        dask = "parallelized",
+        vectorize=True,
+        output_core_dims=[['tmp']],
+        dask_gufunc_kwargs = {"output_sizes": {"tmp": npix_out}},
+        output_dtypes=["f8"],
+    ).rename({'tmp': gridn})
+
+
+def _refine_hp_grid(
+        arr: np.ndarray,
+        nside_out: int,
+        ) -> np.ndarray:
+    return hp.ud_grade(
+        arr, nside_out=nside_out, order_in='NESTED', order_out='NESTED'
+        )
+
+
 # ------------------------------------------------------------------------------
 # Remapping from the healpix grid to regular or rectilinear lat-lon grids
 # -----------------------------------------------------------------------
