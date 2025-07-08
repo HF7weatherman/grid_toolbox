@@ -127,7 +127,7 @@ def coarsen_hp_grid_xr(
     if gridn is None:  # try to guess grid name from frequent options
         gridn = guess_gridn(da)
             
-    return xr.apply_ufunc(
+    da_coarsened = xr.apply_ufunc(
         _coarsen_hp_grid,
         da, z_out,
         input_core_dims=[[gridn], []],
@@ -137,7 +137,19 @@ def coarsen_hp_grid_xr(
         kwargs={'method': method},
         dask_gufunc_kwargs = {"output_sizes": {"tmp": npix_out}},
         output_dtypes=["f8"],
-    ).rename({'tmp': gridn})
+        ).rename({'tmp': gridn})
+
+    # Storing the coordinate reference system
+    crs = xr.DataArray(
+        name="crs",
+        attrs={
+            "grid_mapping_name": "healpix",
+            "healpix_nside": 2**z_out,
+            "healpix_order": "nest",
+        },
+    )
+    da_coarsened = da_coarsened.assign_coords(crs=crs)
+    return da_coarsened
 
 
 def _coarsen_hp_grid(
