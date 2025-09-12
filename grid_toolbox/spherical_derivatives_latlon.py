@@ -2,7 +2,7 @@ import xarray as xr
 import numpy as np
 from typing import Tuple
 
-from constants import EARTH_RADIUS
+from grid_toolbox.constants import EARTH_RADIUS
 
 # ------------------------------------------------------------------------------
 # Derivatives on regular or rectilinear lat-lon grids
@@ -168,7 +168,7 @@ def _compute_laplacian_on_latlon(
     d2var_dphi2 = dvar_dphi.differentiate('lon_rad') * 1/np.cos(var['lat_rad'])
     d2var_dlambda2 = dvar_dlambda.differentiate('lat_rad')
     dvar_dtheta_tanlat = dvar_dlambda * np.tan(var['lat_rad'])
-    return -(d2var_dlambda2 + dvar_dtheta_tanlat - d2var_dphi2)/\
+    return (d2var_dphi2 + d2var_dlambda2 - dvar_dtheta_tanlat)/\
         (EARTH_RADIUS**2)
 
 
