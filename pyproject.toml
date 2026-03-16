@@ -24,5 +24,8 @@ classifiers=[
 ]
 dynamic = ["version"]
 
+[tool.setuptools]
+packages = ["grid_toolbox"]
+
 [tool.setuptools.dynamic]
 version = {attr = "grid_toolbox.__version__"}

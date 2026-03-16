@@ -7,7 +7,9 @@ from grid_toolbox.constants import EARTH_RADIUS
 
 _LAT_LON_PRECISION = 1E-5 # 1 meter at the equator
 
-def get_cells_area(variable: xr.DataArray) -> xr.DataArray:
+def get_cells_area(
+        variable: xr.DataArray | xr.Dataset,
+        ) -> xr.DataArray | xr.Dataset:
     """Return the area of each cell on the grid in meters squares."""
     _check_grid_dimensions(variable)
     lat = np.radians(variable.lat)
