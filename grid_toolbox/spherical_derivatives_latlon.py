@@ -226,7 +226,9 @@ def compute_hor_wind_conv_components_on_latlon(
     va_tanlat = va * np.tan(va['lat_rad'])
     convergence_ua = -dua_dphi/EARTH_RADIUS
     convergence_va = -(dva_dlambda - va_tanlat)/EARTH_RADIUS
-    return (convergence_ua, convergence_va)
+    return xr.merge(
+        [convergence_ua.rename('conv_ua'), convergence_va.rename('conv_va')]
+    )
 
 
 def _deg2rad_coordinates(var_latlon: xr.DataArray) -> xr.DataArray:
