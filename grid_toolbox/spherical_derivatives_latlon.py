@@ -52,6 +52,7 @@ def compute_gradient_on_latlon(
 
 def compute_laplacian_on_latlon(
         var: xr.DataArray,
+        components: bool=False,
         ) -> xr.DataArray:
     """
     Computes the cartesian Laplacian of a variable on regular or rectilinear
@@ -69,11 +70,18 @@ def compute_laplacian_on_latlon(
     """
     var = _deg2rad_coordinates(var)
     dvar_dphi, dvar_dlambda = _compute_hder_on_latlon(var)
-    return _compute_laplacian_on_latlon(var, dvar_dphi, dvar_dlambda)
+    laplacian_components = _compute_laplacian_components_on_latlon(
+        var, dvar_dphi, dvar_dlambda,
+        )
+    if components:
+        return laplacian_components
+    else:
+        return laplacian_components[0] + laplacian_components[1]
 
 
 def compute_gradient_and_laplacian_on_latlon(
-        var: xr.DataArray
+        var: xr.DataArray,
+        components_laplacian: bool=False,
         ) -> Tuple[Tuple[xr.DataArray, xr.DataArray], xr.DataArray]:
     """
     Computes both the cartesian gradient and the cartesian Laplacian of a
@@ -95,7 +103,13 @@ def compute_gradient_and_laplacian_on_latlon(
     var = _deg2rad_coordinates(var)
     dvar_dphi, dvar_dlambda = _compute_hder_on_latlon(var)
     gradient = _compute_gradient_on_latlon(dvar_dphi, dvar_dlambda)
-    laplacian = _compute_laplacian_on_latlon(var, dvar_dphi, dvar_dlambda)
+    laplacian_components = _compute_laplacian_components_on_latlon(
+        var, dvar_dphi, dvar_dlambda,
+        )
+    if components_laplacian:
+        laplacian = laplacian_components
+    else:
+        laplacian = laplacian_components[0] + laplacian_components[1]
     return gradient, laplacian
 
 
@@ -241,30 +255,7 @@ def _compute_gradient_on_latlon(
     return (dvar_dphi/EARTH_RADIUS, dvar_dlambda/EARTH_RADIUS)
 
 
-def _compute_hder_on_latlon(
-        var: xr.DataArray
-        ) -> Tuple[xr.DataArray, xr.DataArray]:
-    """
-    Computes the spherical horizontal derivatives on regular or rectilinear
-    lat-lon grids.
-
-    Parameters
-    ----------
-    var_latlon : xr.DataArray
-        The input data array on a regular or rectilinear lat-lon grid.
-
-    Returns
-    -------
-    Tuple[xr.DataArray, xr.DataArray]
-        A tuple containing the spherical horizontal derivatives
-        (dvar_dphi, dvar_dtheta).
-    """
-    dvar_dphi = var.differentiate('lon_rad') * 1/np.cos(var['lat_rad'])
-    dvar_dlambda = var.differentiate('lat_rad')
-    return dvar_dphi, dvar_dlambda
-
-
-def _compute_laplacian_on_latlon(
+def _compute_laplacian_components_on_latlon(
         var: xr.DataArray,
         dvar_dphi: xr.DataArray,
         dvar_dlambda: xr.DataArray,
@@ -289,8 +280,33 @@ def _compute_laplacian_on_latlon(
     d2var_dphi2 = dvar_dphi.differentiate('lon_rad') * 1/np.cos(var['lat_rad'])
     d2var_dlambda2 = dvar_dlambda.differentiate('lat_rad')
     dvar_dtheta_tanlat = dvar_dlambda * np.tan(var['lat_rad'])
-    return (d2var_dphi2 + d2var_dlambda2 - dvar_dtheta_tanlat)/\
-        (EARTH_RADIUS**2)
+    return (
+        d2var_dphi2 / (EARTH_RADIUS**2),
+        (d2var_dlambda2 - dvar_dtheta_tanlat) / (EARTH_RADIUS**2),
+    )
+
+
+def _compute_hder_on_latlon(
+        var: xr.DataArray
+        ) -> Tuple[xr.DataArray, xr.DataArray]:
+    """
+    Computes the spherical horizontal derivatives on regular or rectilinear
+    lat-lon grids.
+
+    Parameters
+    ----------
+    var_latlon : xr.DataArray
+        The input data array on a regular or rectilinear lat-lon grid.
+
+    Returns
+    -------
+    Tuple[xr.DataArray, xr.DataArray]
+        A tuple containing the spherical horizontal derivatives
+        (dvar_dphi, dvar_dtheta).
+    """
+    dvar_dphi = var.differentiate('lon_rad') * 1/np.cos(var['lat_rad'])
+    dvar_dlambda = var.differentiate('lat_rad')
+    return dvar_dphi, dvar_dlambda
 
 
 def _deg2rad_coordinates(var_latlon: xr.DataArray) -> xr.DataArray:
