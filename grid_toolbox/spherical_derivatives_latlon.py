@@ -127,10 +127,10 @@ def compute_2d_jacobian_on_latlon(
     dvar1_dphi, dvar1_dlambda = _compute_hder_on_latlon(var1)
     dvar2_dphi, dvar2_dlambda = _compute_hder_on_latlon(var2)
     jacobian_latlon = xr.merge([
-        dvar1_dphi.rename(f'{var1_name}_dphi'),
-        dvar1_dlambda.rename(f'{var1_name}_dlambda'),
-        dvar2_dphi.rename(f'{var2_name}_dphi'),
-        dvar2_dlambda.rename(f'{var2_name}_dlambda')
+        dvar1_dphi.rename(f'd{var1_name}_dx'),
+        dvar1_dlambda.rename(f'd{var1_name}_dy'),
+        dvar2_dphi.rename(f'd{var2_name}_dx'),
+        dvar2_dlambda.rename(f'd{var2_name}_dy')
         ]) / EARTH_RADIUS
     return jacobian_latlon
 
