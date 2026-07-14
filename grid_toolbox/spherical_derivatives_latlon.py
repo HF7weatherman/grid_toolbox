@@ -50,7 +50,9 @@ def compute_gradient_on_latlon(
     return _compute_gradient_on_latlon(dvar_dphi, dvar_dlambda)
     
 
-def compute_laplacian_on_latlon(var: xr.DataArray) -> xr.DataArray:
+def compute_laplacian_on_latlon(
+        var: xr.DataArray,
+        ) -> xr.DataArray:
     """
     Computes the cartesian Laplacian of a variable on regular or rectilinear
     lat-lon grids.
@@ -97,6 +99,107 @@ def compute_gradient_and_laplacian_on_latlon(
     return gradient, laplacian
 
 
+def compute_2d_jacobian_on_latlon(
+        var1: xr.DataArray,
+        var2: xr.DataArray,
+        ) -> xr.DataArray:
+    """
+    Computes the cartesian Jacobian of two variables on regular or rectilinear
+    lat-lon grids.
+
+    Parameters
+    ----------
+    var1: xr.DataArray
+        The first input data array on a regular or rectilinear lat-lon grid.
+    var2: xr.DataArray
+        The second input data array on a regular or rectilinear lat-lon grid.
+
+    Returns
+    -------
+    xr.DataArray
+        The cartesian Jacobian of the two input variables.
+    """
+    var1_name = var1.name if var1.name is not None else 'var1'
+    var2_name = var2.name if var2.name is not None else 'var2'
+
+    var1 = _deg2rad_coordinates(var1)
+    var2 = _deg2rad_coordinates(var2)
+    dvar1_dphi, dvar1_dlambda = _compute_hder_on_latlon(var1)
+    dvar2_dphi, dvar2_dlambda = _compute_hder_on_latlon(var2)
+    jacobian_latlon = xr.merge([
+        dvar1_dphi.rename(f'{var1_name}_dphi'),
+        dvar1_dlambda.rename(f'{var1_name}_dlambda'),
+        dvar2_dphi.rename(f'{var2_name}_dphi'),
+        dvar2_dlambda.rename(f'{var2_name}_dlambda')
+        ]) / EARTH_RADIUS
+    return jacobian_latlon
+
+
+# ------------------------------------------------------------------------------
+# Horizontal wind convergence on regular or rectilinear lat-lon grids
+# ------------------------------------------------------------------------------
+def compute_hor_wind_conv_on_latlon(
+        ua: xr.DataArray,
+        va: xr.DataArray,
+        ) -> xr.DataArray:
+    """
+    Computes the cartesian gradient of a variable on regular or rectilinear
+    lat-lon grids.
+
+    Parameters
+    ----------
+    var_latlon : xr.DataArray
+        The input data array on a regular or rectilinear lat-lon grid.
+
+    Returns
+    -------
+    xr.DataArray
+        convegence: Cartesian convergence of a horizontal flow field.
+    """
+    ua = _deg2rad_coordinates(ua)
+    va = _deg2rad_coordinates(va)
+    dua_dphi, _ = _compute_hder_on_latlon(ua)
+    _, dva_dlambda = _compute_hder_on_latlon(va)
+    va_tanlat = va * np.tan(va['lat_rad'])
+    convergence = -(dua_dphi + dva_dlambda - va_tanlat)/EARTH_RADIUS
+    return convergence
+
+
+def compute_hor_wind_conv_components_on_latlon(
+        ua: xr.DataArray,
+        va: xr.DataArray,
+        ) -> Tuple[xr.DataArray, xr.DataArray]:
+    """
+    Computes the cartesian gradient of a variable on regular or rectilinear
+    lat-lon grids.
+
+    Parameters
+    ----------
+    var_latlon : xr.DataArray
+        The input data array on a regular or rectilinear lat-lon grid.
+
+    Returns
+    -------
+    Tuple[xr.DataArray, xr.DataArray]
+        A tuple containing:
+        - convergence_ua: Cartesian convergence of zonal flow component
+        - convergence_va: Cartesian convergence of meridional flow component
+    """
+    ua = _deg2rad_coordinates(ua)
+    va = _deg2rad_coordinates(va)
+    dua_dphi, _ = _compute_hder_on_latlon(ua)
+    _, dva_dlambda = _compute_hder_on_latlon(va)
+    va_tanlat = va * np.tan(va['lat_rad'])
+    convergence_ua = -dua_dphi/EARTH_RADIUS
+    convergence_va = -(dva_dlambda - va_tanlat)/EARTH_RADIUS
+    return xr.merge(
+        [convergence_ua.rename('conv_ua'), convergence_va.rename('conv_va')]
+    )
+
+
+# ------------------------------------------------------------------------------
+# Low-level functions
+# -------------------
 def _compute_gradient_on_latlon(
         dvar_dphi: xr.DataArray,
         dvar_dlambda: xr.DataArray
@@ -170,65 +273,6 @@ def _compute_laplacian_on_latlon(
     dvar_dtheta_tanlat = dvar_dlambda * np.tan(var['lat_rad'])
     return (d2var_dphi2 + d2var_dlambda2 - dvar_dtheta_tanlat)/\
         (EARTH_RADIUS**2)
-
-
-def compute_hor_wind_conv_on_latlon(
-        ua: xr.DataArray,
-        va: xr.DataArray,
-        ) -> xr.DataArray:
-    """
-    Computes the cartesian gradient of a variable on regular or rectilinear
-    lat-lon grids.
-
-    Parameters
-    ----------
-    var_latlon : xr.DataArray
-        The input data array on a regular or rectilinear lat-lon grid.
-
-    Returns
-    -------
-    xr.DataArray
-        convegence: Cartesian convergence of a horizontal flow field.
-    """
-    ua = _deg2rad_coordinates(ua)
-    va = _deg2rad_coordinates(va)
-    dua_dphi, _ = _compute_hder_on_latlon(ua)
-    _, dva_dlambda = _compute_hder_on_latlon(va)
-    va_tanlat = va * np.tan(va['lat_rad'])
-    convergence = -(dua_dphi + dva_dlambda - va_tanlat)/EARTH_RADIUS
-    return convergence
-
-
-def compute_hor_wind_conv_components_on_latlon(
-        ua: xr.DataArray,
-        va: xr.DataArray,
-        ) -> Tuple[xr.DataArray, xr.DataArray]:
-    """
-    Computes the cartesian gradient of a variable on regular or rectilinear
-    lat-lon grids.
-
-    Parameters
-    ----------
-    var_latlon : xr.DataArray
-        The input data array on a regular or rectilinear lat-lon grid.
-
-    Returns
-    -------
-    Tuple[xr.DataArray, xr.DataArray]
-        A tuple containing:
-        - convergence_ua: Cartesian convergence of zonal flow component
-        - convergence_va: Cartesian convergence of meridional flow component
-    """
-    ua = _deg2rad_coordinates(ua)
-    va = _deg2rad_coordinates(va)
-    dua_dphi, _ = _compute_hder_on_latlon(ua)
-    _, dva_dlambda = _compute_hder_on_latlon(va)
-    va_tanlat = va * np.tan(va['lat_rad'])
-    convergence_ua = -dua_dphi/EARTH_RADIUS
-    convergence_va = -(dva_dlambda - va_tanlat)/EARTH_RADIUS
-    return xr.merge(
-        [convergence_ua.rename('conv_ua'), convergence_va.rename('conv_va')]
-    )
 
 
 def _deg2rad_coordinates(var_latlon: xr.DataArray) -> xr.DataArray:
