@@ -156,16 +156,34 @@ def compute_hor_wind_conv_on_latlon(
     xr.DataArray
         convegence: Cartesian convergence of a horizontal flow field.
     """
-    ua = _deg2rad_coordinates(ua)
-    va = _deg2rad_coordinates(va)
-    dua_dphi, _ = _compute_hder_on_latlon(ua)
-    _, dva_dlambda = _compute_hder_on_latlon(va)
-    va_tanlat = va * np.tan(va['lat_rad'])
-    convergence = -(dua_dphi + dva_dlambda - va_tanlat)/EARTH_RADIUS
-    return convergence
+    components = _compute_hor_wind_conv_components_on_latlon(ua, va)
+    return components['conv_ua'] + components['conv_va']
 
 
 def compute_hor_wind_conv_components_on_latlon(
+        ua: xr.DataArray,
+        va: xr.DataArray,
+        ) -> Tuple[xr.DataArray, xr.DataArray]:
+    """
+    Computes the cartesian gradient of a variable on regular or rectilinear
+    lat-lon grids.
+
+    Parameters
+    ----------
+    var_latlon : xr.DataArray
+        The input data array on a regular or rectilinear lat-lon grid.
+
+    Returns
+    -------
+    Tuple[xr.DataArray, xr.DataArray]
+        A tuple containing:
+        - convergence_ua: Cartesian convergence of zonal flow component
+        - convergence_va: Cartesian convergence of meridional flow component
+    """
+    return _compute_hor_wind_conv_components_on_latlon(ua, va)
+
+
+def _compute_hor_wind_conv_components_on_latlon(
         ua: xr.DataArray,
         va: xr.DataArray,
         ) -> Tuple[xr.DataArray, xr.DataArray]:
