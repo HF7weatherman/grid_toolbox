@@ -2,7 +2,7 @@ import numpy as np
 import xarray as xr
 
 from grid_toolbox.spherical_derivatives_latlon import \
-    compute_2d_jacobian_on_latlon, compute_2d_covariant_hesse_on_latlon
+    compute_2d_jacobian_on_latlon, compute_2d_covariant_hessian_on_latlon
 
 def rotate_vector_by_wind(
         vector: dict[str, xr.DataArray],
@@ -53,7 +53,6 @@ def _calc_rotated_divergence(
     return (dur_dr, dus_ds)
 
 
-#-------------------------------------------------------------------------------
 def calc_wind_rotated_laplacian(
         field: xr.DataArray,
         wind: dict[str, xr.DataArray],
@@ -66,16 +65,16 @@ def _calc_rotated_laplacian(
         field: xr.DataArray,
         angle: xr.DataArray,
         ) -> tuple[xr.DataArray, xr.DataArray]:
-    hessian = compute_2d_covariant_hesse_on_latlon(field)
+    hessian = compute_2d_covariant_hessian_on_latlon(field)
     cos_angle = np.cos(angle)
     sin_angle = np.sin(angle)
 
     dur_dr = \
-        cos_angle**2 * hessian['dvar_dxx'] + \
-        sin_angle**2 * hessian['dvar_dyy'] + \
-        2 * cos_angle * sin_angle * hessian['dvar_dxy']
+        cos_angle**2 * hessian['df_dxx'] + \
+        sin_angle**2 * hessian['df_dyy'] + \
+        2 * cos_angle * sin_angle * hessian['df_dxy']
     dus_ds = \
-        sin_angle**2 * hessian['dvar_dxx'] + \
-        cos_angle**2 * hessian['dvar_dyy'] - \
-        2 * cos_angle * sin_angle * hessian['dvar_dxy']
+        sin_angle**2 * hessian['df_dxx'] + \
+        cos_angle**2 * hessian['df_dyy'] - \
+        2 * cos_angle * sin_angle * hessian['df_dxy']
     return (dur_dr, dus_ds)
