@@ -5,8 +5,8 @@ from typing import Tuple
 from grid_toolbox.constants import EARTH_RADIUS
 
 # ------------------------------------------------------------------------------
-# Derivatives on regular or rectilinear lat-lon grids
-# ---------------------------------------------------
+# Simple Cartesian derivatives on spherical coordinates (lat-lon grids)
+# ---------------------------------------------------------------------
 def absolute_gradient(
         gradient: Tuple[xr.DataArray, xr.DataArray]
         ) -> xr.DataArray:
@@ -47,7 +47,7 @@ def compute_gradient_on_latlon(
     """
     var = _deg2rad_coordinates(var)
     dvar_dphi, dvar_dlambda = _compute_hder_on_latlon(var)
-    return _compute_gradient_on_latlon(dvar_dphi, dvar_dlambda)
+    return (dvar_dphi, dvar_dlambda)
     
 
 def compute_laplacian_on_latlon(
@@ -102,7 +102,7 @@ def compute_gradient_and_laplacian_on_latlon(
     """
     var = _deg2rad_coordinates(var)
     dvar_dphi, dvar_dlambda = _compute_hder_on_latlon(var)
-    gradient = _compute_gradient_on_latlon(dvar_dphi, dvar_dlambda)
+    gradient = (dvar_dphi, dvar_dlambda)
     laplacian_components = _compute_laplacian_components_on_latlon(
         var, dvar_dphi, dvar_dlambda,
         )
@@ -113,9 +113,12 @@ def compute_gradient_and_laplacian_on_latlon(
     return gradient, laplacian
 
 
+# ------------------------------------------------------------------------------
+# Complex Cartesian derivative matrices on spherical coordinates (lat-lon grids)
+# ------------------------------------------------------------------------------ß
 def compute_2d_jacobian_on_latlon(
-        var1: xr.DataArray,
-        var2: xr.DataArray,
+        f1: xr.DataArray,
+        f2: xr.DataArray,
         ) -> xr.DataArray:
     """
     Computes the cartesian Jacobian of two variables on regular or rectilinear
@@ -123,9 +126,9 @@ def compute_2d_jacobian_on_latlon(
 
     Parameters
     ----------
-    var1: xr.DataArray
+    f1: xr.DataArray
         The first input data array on a regular or rectilinear lat-lon grid.
-    var2: xr.DataArray
+    f2: xr.DataArray
         The second input data array on a regular or rectilinear lat-lon grid.
 
     Returns
@@ -133,20 +136,56 @@ def compute_2d_jacobian_on_latlon(
     xr.DataArray
         The cartesian Jacobian of the two input variables.
     """
-    var1_name = var1.name if var1.name is not None else 'var1'
-    var2_name = var2.name if var2.name is not None else 'var2'
+    f1_name = f1.name if f1.name is not None else 'f1'
+    f2_name = f2.name if f2.name is not None else 'f2'
 
-    var1 = _deg2rad_coordinates(var1)
-    var2 = _deg2rad_coordinates(var2)
-    dvar1_dphi, dvar1_dlambda = _compute_hder_on_latlon(var1)
-    dvar2_dphi, dvar2_dlambda = _compute_hder_on_latlon(var2)
+    f1 = _deg2rad_coordinates(f1)
+    f2 = _deg2rad_coordinates(f2)
+    df1_dphi, df1_dlambda = _compute_hder_on_latlon(f1)
+    df2_dphi, df2_dlambda = _compute_hder_on_latlon(f2)
     jacobian_latlon = xr.merge([
-        dvar1_dphi.rename(f'd{var1_name}_dx'),
-        dvar1_dlambda.rename(f'd{var1_name}_dy'),
-        dvar2_dphi.rename(f'd{var2_name}_dx'),
-        dvar2_dlambda.rename(f'd{var2_name}_dy')
-        ]) / EARTH_RADIUS
+        df1_dphi.rename(f'd{f1_name}_dx'),
+        df1_dlambda.rename(f'd{f1_name}_dy'),
+        df2_dphi.rename(f'd{f2_name}_dx'),
+        df2_dlambda.rename(f'd{f2_name}_dy')
+        ])
     return jacobian_latlon
+
+
+def compute_2d_covariant_hesse_on_latlon(
+        f: xr.DataArray,
+        ) -> xr.DataArray:
+    """
+    Computes the cartesian Hessian of a variable on regular or rectilinear
+    lat-lon grids.
+
+    Parameters
+    ----------
+    f: xr.DataArray
+        The input data array on a regular or rectilinear lat-lon grid.
+
+    Returns
+    -------
+    xr.DataArray
+        The cartesian Hessian of the input variable.
+    """
+    var_name = f.name if f.name is not None else 'var'
+    f = _deg2rad_coordinates(f)
+    dfield_dphi, dfield_dlambda = _compute_hder_on_latlon(f)
+    d2var_dphi2 = dfield_dphi.differentiate('lon_rad') * 1/np.cos(f['lat_rad'])
+
+
+    
+    d2var_dxx = 
+    d2var_dyy = 
+    d2var_dxy = 
+
+
+    hessian_latlon = xr.merge([
+        d2var_dphi2.rename(f'd{var_name}_dxx'),
+        d2var_dlambda2.rename(f'd{var_name}_dyy')
+        ])
+    return hessian_latlon
 
 
 # ------------------------------------------------------------------------------
@@ -222,8 +261,8 @@ def _compute_hor_wind_conv_components_on_latlon(
     dua_dphi, _ = _compute_hder_on_latlon(ua)
     _, dva_dlambda = _compute_hder_on_latlon(va)
     va_tanlat = va * np.tan(va['lat_rad'])
-    convergence_ua = -dua_dphi/EARTH_RADIUS
-    convergence_va = -(dva_dlambda - va_tanlat)/EARTH_RADIUS
+    convergence_ua = -dua_dphi
+    convergence_va = -(dva_dlambda - va_tanlat/EARTH_RADIUS)
     return xr.merge(
         [convergence_ua.rename('conv_ua'), convergence_va.rename('conv_va')]
     )
@@ -232,29 +271,6 @@ def _compute_hor_wind_conv_components_on_latlon(
 # ------------------------------------------------------------------------------
 # Low-level functions
 # -------------------
-def _compute_gradient_on_latlon(
-        dvar_dphi: xr.DataArray,
-        dvar_dlambda: xr.DataArray
-        ) -> Tuple[xr.DataArray, xr.DataArray]:
-    """
-    Computes the cartesian gradient components from spherical gradient
-    components.
-
-    Parameters
-    ----------
-    dvar_dphi : xr.DataArray
-        The spherical gradient component with respect to longitude.
-    dvar_dtheta : xr.DataArray
-        The spherical gradient component with respect to latitude.
-
-    Returns
-    -------
-    Tuple[xr.DataArray, xr.DataArray]
-        A tuple containing the cartesian gradient components (dvar_dx, dvar_dy).
-    """
-    return (dvar_dphi/EARTH_RADIUS, dvar_dlambda/EARTH_RADIUS)
-
-
 def _compute_laplacian_components_on_latlon(
         var: xr.DataArray,
         dvar_dphi: xr.DataArray,
@@ -277,13 +293,11 @@ def _compute_laplacian_components_on_latlon(
     xr.DataArray
         The cartesian Laplacian of the input variable.
     """
-    d2var_dphi2 = dvar_dphi.differentiate('lon_rad') * 1/np.cos(var['lat_rad'])
-    d2var_dlambda2 = dvar_dlambda.differentiate('lat_rad')
-    dvar_dtheta_tanlat = dvar_dlambda * np.tan(var['lat_rad'])
-    return (
-        d2var_dphi2 / (EARTH_RADIUS**2),
-        (d2var_dlambda2 - dvar_dtheta_tanlat) / (EARTH_RADIUS**2),
-    )
+    d2var_dphi2, _ = _compute_hder_on_latlon(dvar_dphi)
+    _, d2var_dlambda2 = _compute_hder_on_latlon(dvar_dlambda)
+    dvar_dtheta_tanlat = (dvar_dlambda / EARTH_RADIUS) * np.tan(var['lat_rad'])
+
+    return (d2var_dphi2, d2var_dlambda2 - dvar_dtheta_tanlat)
 
 
 def _compute_hder_on_latlon(
@@ -304,9 +318,9 @@ def _compute_hder_on_latlon(
         A tuple containing the spherical horizontal derivatives
         (dvar_dphi, dvar_dtheta).
     """
-    dvar_dphi = var.differentiate('lon_rad') * 1/np.cos(var['lat_rad'])
+    dvar_dphi = var.differentiate('lon_rad') / np.cos(var['lat_rad'])
     dvar_dlambda = var.differentiate('lat_rad')
-    return dvar_dphi, dvar_dlambda
+    return dvar_dphi/EARTH_RADIUS, dvar_dlambda/EARTH_RADIUS
 
 
 def _deg2rad_coordinates(var_latlon: xr.DataArray) -> xr.DataArray:
