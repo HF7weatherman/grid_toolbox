@@ -4,7 +4,8 @@ import xarray as xr
 from typing import Tuple, Dict
 
 from grid_toolbox.spherical_derivatives_latlon import \
-    compute_2d_jacobian_on_latlon, compute_2d_covariant_hessian_on_latlon
+    compute_2d_jacobian_on_latlon, \
+    compute_2d_covariant_hessian_on_latlon
 
 
 # ------------------------------------------------------------------------------
@@ -18,12 +19,12 @@ def rotate_vector_by_wind(
     return _rotate_vector(vector, rot_angle)
 
 
-def calc_wind_rotated_divergence(
+def calc_wind_rotated_convergence(
         vector: Dict[str, xr.DataArray],
         wind: Dict[str, xr.DataArray],
         ) -> Tuple[xr.DataArray, xr.DataArray]:
     rot_angle = np.arctan2(wind['v'], wind['u']).rename('rotation_angle')
-    return _calc_rotated_divergence(vector, rot_angle)
+    return _calc_rotated_convergence(vector, rot_angle)
 
 
 def calc_wind_rotated_laplacian(
@@ -48,7 +49,7 @@ def _rotate_vector(
     return (x_rot, y_rot)
 
 
-def _calc_rotated_divergence(
+def _calc_rotated_convergence(
         vector: Dict[str, xr.DataArray],
         angle: xr.DataArray,
         ) -> Tuple[xr.DataArray, xr.DataArray]:
@@ -67,7 +68,7 @@ def _calc_rotated_divergence(
         sin_angle**2 * jacobian['du_dx'] + \
         cos_angle**2 * jacobian['dv_dy'] - \
         cos_angle * sin_angle * (jacobian['du_dy'] + jacobian['dv_dx'])
-    return (dur_dr, dus_ds)
+    return (-dur_dr, -dus_ds)
     
 
 def _calc_rotated_laplacian(
